@@ -1,77 +1,68 @@
-from flask import Flask, request, render_template, jsonify
-import string
-import nltk
-from nltk.util import ngrams
-from collections import defaultdict, Counter
+from flask import Flask, request, render_template, redirect, url_for
 import os
+import string
 
 app = Flask(__name__)
+app.config['UPLOAD_FOLDER'] = 'uploads'
+if not os.path.exists(app.config['UPLOAD_FOLDER']):
+    os.makedirs(app.config['UPLOAD_FOLDER'])
 
-def load_stopwords(filepath):
-    with open(filepath, 'r') as file:
-        stopwords = file.read().splitlines()
-    return set(stopwords)
-
-def process_text_line(line, stopwords, letter_frequency, bigram_frequency, total_word_count, filtered_word_count, prev_words):
-    # Convert to lowercase
-    line = line.lower()
-    # Remove punctuation
-    line = line.translate(str.maketrans('', '', string.punctuation))
-    # Split into words
-    words = line.split()
-    # Update total word count
-    total_word_count += len(words)
-    # Remove stop words
-    filtered_words = [word for word in words if word not in stopwords]
-    filtered_word_count += len(filtered_words)
-
-    # Update letter frequency
-    for word in filtered_words:
-        for letter in word:
-            letter_frequency[letter] += 1
-
-    # Update bigram frequency
-    bigrams = list(ngrams(prev_words + filtered_words, 2))
-    for bigram in bigrams:
-        bigram_frequency[bigram] += 1
-    
-    return total_word_count, filtered_word_count, filtered_words[-1:]
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in {'txt'}
 
 @app.route('/')
-def index():
-    return render_template('index.html')
+def upload_form():
+    return render_template('upload.html')
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
-    if 'file' not in request.files:
-        return jsonify({"error": "No file part"})
-    file = request.files['file']
-    if file.filename == '':
-        return jsonify({"error": "No selected file"})
-    if file:
-        stopwords = load_stopwords('StopWords.txt')
-        letter_frequency = defaultdict(int)
-        bigram_frequency = defaultdict(int)
-        total_word_count = 0
-        filtered_word_count = 0
-        prev_words = []
+    if 'file1' not in request.files or 'file2' not in request.files or 'file3' not in request.files:
+        return redirect(request.url)
+    
+    file1 = request.files['file1']
+    file2 = request.files['file2']
+    file3 = request.files['file3']
+    
+    if file1 and allowed_file(file1.filename):
+        file1.save(os.path.join(app.config['UPLOAD_FOLDER'], 'file1.txt'))
+    if file2 and allowed_file(file2.filename):
+        file2.save(os.path.join(app.config['UPLOAD_FOLDER'], 'file2.txt'))
+    if file3 and allowed_file(file3.filename):
+        file3.save(os.path.join(app.config['UPLOAD_FOLDER'], 'file3.txt'))
 
-        try:
-            for line in file:
-                line = line.decode('utf-8')
-                total_word_count, filtered_word_count, prev_words = process_text_line(line, stopwords, letter_frequency, bigram_frequency, total_word_count, filtered_word_count, prev_words)
-            
-            bigram_freq = {f"{w1} {w2}": freq for (w1, w2), freq in bigram_frequency.items()}
-            
-            return jsonify({
-                "total_words": total_word_count,
-                "word_count": filtered_word_count,
-                "letter_frequency": dict(letter_frequency),
-                "bigram_frequency": bigram_freq
-            })
-        except Exception as e:
-            return jsonify({"error": str(e)})
+    return redirect(url_for('process_files'))
 
-if __name__ == '__main__':
-    nltk.download('punkt')
-    app.run(debug=True)
+@app.route('/process')
+def process_files():
+    file1_path = os.path.join(app.config['UPLOAD_FOLDER'], 'file1.txt')
+    file2_path = os.path.join(app.config['UPLOAD_FOLDER'], 'file2.txt')
+    file3_path = os.path.join(app.config['UPLOAD_FOLDER'], 'file3.txt')
+
+    with open(file3_path, 'r', encoding='utf-8') as f:
+        text = f.read()
+    
+    text_processed, char_count, word_count = process_text_file(text)
+
+    similarity = compare_files(file1_path, file2_path, text_processed)
+
+    final_text = remove_short_words(text_processed)
+
+    result = {
+        'char_count': char_count,
+        'word_count': word_count,
+        'similarity': similarity,
+        'final_text': final_text
+    }
+    
+    return render_template('result.html', result=result)
+
+def process_text_file(text):
+    text = text.lower()
+    text = text.translate(str.maketrans('', '', string.punctuation))
+    char_count = len(text)
+    word_count = len(text.split())
+    return text, char_count, word_count
+
+def compare_files(file1_path, file2_path, text):
+    with open(file1_path, 'r', encoding='utf-8') as f1, open(file2_path, 'r', encoding='utf-8') as f2:
+        text1 = f1
