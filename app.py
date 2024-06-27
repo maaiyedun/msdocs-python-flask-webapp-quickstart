@@ -1,66 +1,72 @@
-from flask import Flask, request, render_template, jsonify
-import string
+from flask import Flask, request, render_template
+import nltk
+from nltk.util import bigrams
+import re
+
+nltk.download('punkt')
 
 app = Flask(__name__)
 
-def remove_non_ascii(text):
-    return ''.join(c for c in text if ord(c) < 128)
+def letter_frequency(text):
+    frequencies = {}
+    for char in text:
+        if char.isalpha():
+            frequencies[char] = frequencies.get(char, 0) + 1
+    return frequencies
 
-def process_text(text):
-    text = remove_non_ascii(text)
-    text = text.lower()
-    return text
+def word_count(text):
+    words = re.findall(r'\b\w+\b', text)
+    return len(words)
 
-def remove_punctuation(text):
-    return text.translate(str.maketrans('', '', string.punctuation))
+def words_starting_with(text, letters):
+    words = re.findall(r'\b\w+\b', text)
+    return [word for word in words if word[0].lower() in letters.lower()]
 
-def count_letters_and_words(text):
-    letters = sum(c.isalpha() for c in text)
-    words = len(text.split())
-    return letters, words
+def remove_stopwords(text, stopwords):
+    words = re.findall(r'\b\w+\b', text)
+    filtered_words = [word for word in words if word.lower() not in stopwords]
+    return ' '.join(filtered_words)
 
-def letter_frequency(text, letters='aeiou'):
-    total_chars = len(text)
-    frequency = {letter: text.count(letter) / total_chars for letter in letters}
-    return frequency
+def find_bigrams(words):
+    return list(bigrams(words))
 
-def compare_frequencies(freq1, freq2):
-    diff = sum((freq1[letter] - freq2[letter]) ** 2 for letter in freq1) / 5
-    return diff
-
-@app.route('/')
+@app.route('/', methods=['GET', 'POST'])
 def index():
+    if request.method == 'POST':
+        string_input = request.form['string_input']
+        char_input = request.form['char_input']
+        text_input = request.form['text_input']
+
+        # Task 10
+        frequencies = letter_frequency(text_input)
+        total_chars = sum(frequencies.values())
+        letter_freqs = {char: (count, count/total_chars) for char, count in frequencies.items() if char in string_input}
+
+        replaced_text = ''
+        for char in text_input:
+            if char in string_input:
+                replaced_text += char_input
+            else:
+                replaced_text += char
+        
+
+        #replaced_text = ''.join([char_input if char in string_input else char for char in text_input])
+
+        # Task 11
+        total_words = word_count(text_input)
+        words_with_string_chars = words_starting_with(text_input, string_input)
+
+        # Task 12
+        with open('StopWords.txt', 'r') as file:
+            stopwords = set(file.read().split())
+
+        filtered_text = remove_stopwords(text_input, stopwords)
+        bigrams_list = find_bigrams(words_with_string_chars)
+
+        return render_template('index.html', letter_freqs=letter_freqs,replaced_text=replaced_text, total_words=total_words,
+                               words_with_string_chars=words_with_string_chars, bigrams_list=bigrams_list)
+
     return render_template('index.html')
-
-@app.route('/process', methods=['POST'])
-def process_files():
-    files = [request.files['file1'], request.files['file2'], request.files['file3']]
-    texts = [process_text(f.read().decode('latin-1')) for f in files]
-
-    texts[2] = remove_punctuation(texts[2])
-    letters, words = count_letters_and_words(texts[2])
-
-    freq1 = letter_frequency(texts[0])
-    freq2 = letter_frequency(texts[1])
-    freq3 = letter_frequency(texts[2])
-
-    diff1 = compare_frequencies(freq3, freq1)
-    diff2 = compare_frequencies(freq3, freq2)
-
-    closer = "File 1" if diff1 < diff2 else "File 2"
-
-    processed_text3 = ' '.join(word for word in texts[2].split() if len(word) >= 4)
-
-    result = {
-        "file3": {
-            "total_letters": letters,
-            "total_words": words,
-            "closer_to": closer,
-            "processed_text": processed_text3
-        }
-    }
-
-    return jsonify(result)
 
 if __name__ == '__main__':
     app.run(debug=True)
