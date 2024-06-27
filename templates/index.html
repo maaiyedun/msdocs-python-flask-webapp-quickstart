@@ -3,47 +3,39 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Text File Upload</title>
+    <title>Text Processing App</title>
 </head>
 <body>
-    <h1>Upload a Text File</h1>
+    <h1>Upload Text Files for Processing</h1>
     <form id="uploadForm" enctype="multipart/form-data">
-        <input type="file" id="fileInput" name="file" accept=".txt">
-        <button type="button" onclick="uploadFile()">Upload</button>
+        <label for="file1">Text File 1:</label>
+        <input type="file" id="file1" name="file1" required><br><br>
+        <label for="file2">Text File 2:</label>
+        <input type="file" id="file2" name="file2" required><br><br>
+        <label for="file3">Text File 3:</label>
+        <input type="file" id="file3" name="file3" required><br><br>
+        <input type="submit" value="Upload and Process">
     </form>
-    <h2>Results</h2>
-    <div id="results"></div>
+
+    <div id="result"></div>
 
     <script>
-        function uploadFile() {
-            var formData = new FormData(document.getElementById('uploadForm'));
-            fetch('/upload', {
+        document.getElementById('uploadForm').addEventListener('submit', async function(event) {
+            event.preventDefault();
+            
+            const formData = new FormData();
+            formData.append('file1', document.getElementById('file1').files[0]);
+            formData.append('file2', document.getElementById('file2').files[0]);
+            formData.append('file3', document.getElementById('file3').files[0]);
+
+            const response = await fetch('/process', {
                 method: 'POST',
                 body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.error) {
-                    document.getElementById('results').innerText = data.error;
-                } else {
-                    var resultsDiv = document.getElementById('results');
-                    resultsDiv.innerHTML = `<p>Word Count: ${data.word_count}</p>`;
-                    resultsDiv.innerHTML += `<p>Letter Frequency:</p>`;
-                    resultsDiv.innerHTML += `<ul>`;
-                    for (const [letter, freq] of Object.entries(data.letter_frequency)) {
-                        resultsDiv.innerHTML += `<li>${letter}: ${freq}</li>`;
-                    }
-                    resultsDiv.innerHTML += `</ul>`;
-                    resultsDiv.innerHTML += `<p>Bigram Frequency:</p>`;
-                    resultsDiv.innerHTML += `<ul>`;
-                    for (const [bigram, freq] of Object.entries(data.bigram_frequency)) {
-                        resultsDiv.innerHTML += `<li>${bigram}: ${freq}</li>`;
-                    }
-                    resultsDiv.innerHTML += `</ul>`;
-                }
-            })
-            .catch(error => console.error('Error:', error));
-        }
+            });
+
+            const result = await response.json();
+            document.getElementById('result').innerHTML = `<pre>${JSON.stringify(result, null, 2)}</pre>`;
+        });
     </script>
 </body>
 </html>

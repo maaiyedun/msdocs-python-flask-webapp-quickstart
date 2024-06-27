@@ -1,68 +1,62 @@
-from flask import Flask, request, render_template, redirect, url_for
-import os
+from flask import Flask, request, jsonify
 import string
 
 app = Flask(__name__)
-app.config['UPLOAD_FOLDER'] = 'uploads'
-if not os.path.exists(app.config['UPLOAD_FOLDER']):
-    os.makedirs(app.config['UPLOAD_FOLDER'])
 
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in {'txt'}
+def remove_non_ascii(text):
+    return ''.join(c for c in text if ord(c) < 128)
 
-@app.route('/')
-def upload_form():
-    return render_template('upload.html')
+def process_text(text):
+    text = remove_non_ascii(text)
+    text = text.lower()
+    return text
 
-@app.route('/upload', methods=['POST'])
-def upload_file():
-    if 'file1' not in request.files or 'file2' not in request.files or 'file3' not in request.files:
-        return redirect(request.url)
-    
-    file1 = request.files['file1']
-    file2 = request.files['file2']
-    file3 = request.files['file3']
-    
-    if file1 and allowed_file(file1.filename):
-        file1.save(os.path.join(app.config['UPLOAD_FOLDER'], 'file1.txt'))
-    if file2 and allowed_file(file2.filename):
-        file2.save(os.path.join(app.config['UPLOAD_FOLDER'], 'file2.txt'))
-    if file3 and allowed_file(file3.filename):
-        file3.save(os.path.join(app.config['UPLOAD_FOLDER'], 'file3.txt'))
+def remove_punctuation(text):
+    return text.translate(str.maketrans('', '', string.punctuation))
 
-    return redirect(url_for('process_files'))
+def count_letters_and_words(text):
+    letters = sum(c.isalpha() for c in text)
+    words = len(text.split())
+    return letters, words
 
-@app.route('/process')
+def letter_frequency(text, letters='aeiou'):
+    total_chars = len(text)
+    frequency = {letter: text.count(letter) / total_chars for letter in letters}
+    return frequency
+
+def compare_frequencies(freq1, freq2):
+    diff = sum((freq1[letter] - freq2[letter]) ** 2 for letter in freq1) / 5
+    return diff
+
+@app.route('/process', methods=['POST'])
 def process_files():
-    file1_path = os.path.join(app.config['UPLOAD_FOLDER'], 'file1.txt')
-    file2_path = os.path.join(app.config['UPLOAD_FOLDER'], 'file2.txt')
-    file3_path = os.path.join(app.config['UPLOAD_FOLDER'], 'file3.txt')
+    files = [request.files['file1'], request.files['file2'], request.files['file3']]
+    texts = [process_text(f.read().decode('utf-8')) for f in files]
 
-    with open(file3_path, 'r', encoding='utf-8') as f:
-        text = f.read()
-    
-    text_processed, char_count, word_count = process_text_file(text)
+    texts[2] = remove_punctuation(texts[2])
+    letters, words = count_letters_and_words(texts[2])
 
-    similarity = compare_files(file1_path, file2_path, text_processed)
+    freq1 = letter_frequency(texts[0])
+    freq2 = letter_frequency(texts[1])
+    freq3 = letter_frequency(texts[2])
 
-    final_text = remove_short_words(text_processed)
+    diff1 = compare_frequencies(freq3, freq1)
+    diff2 = compare_frequencies(freq3, freq2)
+
+    closer = "File 1" if diff1 < diff2 else "File 2"
+
+    processed_text3 = ' '.join(word for word in texts[2].split() if len(word) >= 3)
 
     result = {
-        'char_count': char_count,
-        'word_count': word_count,
-        'similarity': similarity,
-        'final_text': final_text
+        "file3": {
+            "total_letters": letters,
+            "total_words": words,
+            "closer_to": closer,
+            "processed_text": processed_text3
+        }
     }
-    
-    return render_template('result.html', result=result)
 
-def process_text_file(text):
-    text = text.lower()
-    text = text.translate(str.maketrans('', '', string.punctuation))
-    char_count = len(text)
-    word_count = len(text.split())
-    return text, char_count, word_count
+    return jsonify(result)
 
-def compare_files(file1_path, file2_path, text):
-    with open(file1_path, 'r', encoding='utf-8') as f1, open(file2_path, 'r', encoding='utf-8') as f2:
-        text1 = f1
+if __name__ == '__main__':
+    app.run(debug=True)
