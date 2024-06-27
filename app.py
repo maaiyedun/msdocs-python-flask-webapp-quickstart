@@ -50,7 +50,7 @@ def process_files():
 
     closer = "File 1" if diff1 < diff2 else "File 2"
 
-    processed_text3 = ' '.join(word for word in texts[2].split() if len(word) >= 3)
+    processed_text3 = ' '.join(word for word in texts[2].split() if len(word) >= 4)
 
     result = {
         "file3": {
