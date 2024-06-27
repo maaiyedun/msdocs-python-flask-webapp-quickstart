@@ -74,7 +74,7 @@ def index():
         with open('StopWords.txt', 'r') as file:
             stopwords = set(file.read().split())
 
-        filtered_text = remove_stopwords(text_input, stopwords)
+        filtered_text = remove_stopwords(text_input, stopwords.lower())
         bigrams_list = find_bigrams(words_with_string_chars)
 
         return render_template('index.html', letter_freqs=letter_freqs,replaced_text=replaced_text, total_words=total_words,
