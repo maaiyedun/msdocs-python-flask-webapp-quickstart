@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, render_template, jsonify
 import string
 
 app = Flask(__name__)
@@ -27,6 +27,10 @@ def letter_frequency(text, letters='aeiou'):
 def compare_frequencies(freq1, freq2):
     diff = sum((freq1[letter] - freq2[letter]) ** 2 for letter in freq1) / 5
     return diff
+
+@app.route('/')
+def upload_form():
+    return render_template('index.html')
 
 @app.route('/process', methods=['POST'])
 def process_files():
