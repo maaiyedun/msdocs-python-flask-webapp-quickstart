@@ -9,7 +9,15 @@
 
 
 
-    <h1>Text Processing Application</h1>
+    <h1>Quiz 4:Text Processing</h1>
+
+    <div>
+        <form id="uploadForm" enctype="multipart/form-data">
+            <input type="file" id="fileInput" name="file" accept=".txt">
+            <button type="button" onclick="uploadFile()">Upload</button>
+        </form>
+    </div>
+
     <form method="post">
         <label for="string_input">String Input (Length of 1-10 characters please):</label>
         <input type="text" id="string_input" name="string_input"><br><br>
@@ -32,6 +40,7 @@
 
     <h3>Part (11). Words Count and Words Starting with Letters from String input "S":</h3>
     <p>Total Words: {{ total_words }}</p>
+    <p>Character: {{ char_input }}</p>
     <ul>
         {% for word in words_with_string_chars %}
         <li>{{ word }}</li>
@@ -45,5 +54,19 @@
         {% endfor %}
     </ul>
     {% endif %}
+
+    <script>
+        function uploadFile() {
+            var formData = new FormData(document.getElementById('uploadForm'));
+            fetch('/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    document.getElementById('results').innerText = data.error;
+                }
+    </script>
 </body>
 </html>

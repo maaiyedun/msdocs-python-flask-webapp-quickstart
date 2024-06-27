@@ -1,4 +1,4 @@
-from flask import Flask, request, render_template
+from flask import Flask, request, render_template, jsonify
 import nltk
 from nltk.util import bigrams
 import re
@@ -30,6 +30,20 @@ def remove_stopwords(text, stopwords):
 def find_bigrams(words):
     return list(bigrams(words))
 
+def load_stopwords(filepath):
+    with open(filepath, 'r') as file:
+        stopwords = file.read().splitlines()
+    return set(stopwords)
+
+def upload_file():
+    if 'file' not in request.files:
+        return jsonify({"error": "No file part"})
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({"error": "No selected file"})
+    if file:
+        stopwords = load_stopwords('StopWords.txt')
+
 @app.route('/', methods=['GET', 'POST'])
 def index():
     if request.method == 'POST':
@@ -53,7 +67,7 @@ def index():
         #replaced_text = ''.join([char_input if char in string_input else char for char in text_input])
 
         # Task 11
-        total_words = word_count(text_input)
+        total_words = len(text_input.split())
         words_with_string_chars = words_starting_with(text_input, string_input)
 
         # Task 12
