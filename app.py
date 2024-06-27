@@ -1,4 +1,5 @@
 from flask import Flask, request, render_template, jsonify
+from unidecode import unidecode
 import string
 
 app = Flask(__name__)
@@ -35,7 +36,7 @@ def index():
 @app.route('/process', methods=['POST'])
 def process_files():
     files = [request.files['file1'], request.files['file2'], request.files['file3']]
-    texts = [process_text(f.read().decode('utf-8')) for f in files]
+    texts = [process_text(f.read().decode('latin-1')) for f in files]
 
     texts[2] = remove_punctuation(texts[2])
     letters, words = count_letters_and_words(texts[2])
