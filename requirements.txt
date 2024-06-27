@@ -2,4 +2,3 @@ flask==2.2.2
 nltk==3.6.2
 gunicorn
 Werkzeug==2.2.2
-azure-storage-blob==12.10.0

@@ -1,5 +1,4 @@
 from flask import Flask, request, render_template, jsonify
-from unidecode import unidecode
 import string
 
 app = Flask(__name__)
